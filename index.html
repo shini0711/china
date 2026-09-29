@@ -362,7 +362,6 @@ details.wxv[open] summary{border:0;margin:0}
 .tg{font-size:12px;font-weight:700;background:var(--paper2);border:1px solid var(--line);border-radius:999px;padding:1px 8px;color:var(--ink)}
 .tr{font-size:13px;font-weight:800;color:var(--jade);padding:0 2px}
 .citylists .stops{margin-bottom:6px}
-.mapt{margin:26px 0 0;font-size:19px;font-weight:800}
 
 /* === App-Hülle: alles in einem Container, der an den sichtbaren Bereich gebunden wird === */
 html,body{position:fixed;inset:0;width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
@@ -378,6 +377,14 @@ html,body{position:fixed;inset:0;width:100%;height:100%;margin:0;overflow:hidden
 html,body{position:static;inset:auto;width:auto;height:100%;overflow:visible;overscroll-behavior-y:none}
 body{margin:0}
 #app{position:relative;left:auto;right:auto;top:auto;height:var(--vh,100%)}
+
+/* Apple Karten parallel zu Amap */
+.ib.apl{font-size:20px;line-height:1}
+.btn.apl2{font-size:14px}
+a.apl{display:inline-flex;align-items:center;justify-content:center;min-width:38px;min-height:38px;padding:0 8px;margin-left:8px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink);text-decoration:none;font:600 13px/1 var(--serif);vertical-align:middle}
+.mapbtns a.apl{min-height:44px;min-width:44px;margin-left:0;font-size:18px}
+.legend li a.apl{min-height:34px;min-width:34px;margin-left:8px;font-size:16px}
+a.apl.inl{min-height:32px;margin-left:4px}
 
 </style>
 </head>
@@ -396,7 +403,7 @@ body{margin:0}
   <h2>Praktisches</h2>
 
   <h3>Karten-Links</h3>
-  <p>In den Stadtkapiteln öffnen Karte, Buttons und Legendeneinträge die Orte direkt in der Karten-App. Taiwan läuft über Google Maps, Festlandchina über Amap (Gaode). Auf dem iPhone öffnen die Links die installierte App, dafür den Guide am besten in Safari aufrufen. Auf anderen Geräten öffnet sich die Web-Karte. In Google Maps lässt sich bei den Tagesrouten oben auf ÖPNV oder Auto umschalten. In Amap sitzen die Pins auf gespeicherten Koordinaten, liegt einer daneben, hilft die Suche nach dem chinesischen Namen aus diesem Guide.</p>
+  <p>In den Stadtkapiteln öffnen Karte, Buttons und Legendeneinträge die Orte direkt in der Karten-App. Taiwan läuft über Google Maps, Festlandchina über Amap (Gaode). Auf dem iPhone öffnen die Links die installierte App, dafür den Guide am besten in Safari aufrufen. Auf anderen Geräten öffnet sich die Web-Karte. In Google Maps lässt sich bei den Tagesrouten oben auf ÖPNV oder Auto umschalten. In Amap sitzen die Pins auf gespeicherten Koordinaten, liegt einer daneben, hilft die Suche nach dem chinesischen Namen aus diesem Guide. In China gibt es zu jedem Amap-Pin zusätzlich einen Pin für Apple Karten (🍎). Apple Karten arbeitet dort mit chinesischen Kartendaten und braucht kein separates Konto.</p>
 
   <h3>Strom und Geräte</h3>
   <p><b>Taiwan:</b> 110 V, Steckertyp A/B (US-Stecker). Adapter nötig, Ladegeräte vertragen 100–240 V. <b>China:</b> 220 V, meist Kombisteckdosen, in die flache Eurostecker oft passen, Schuko-Stecker nicht. Ein Universaladapter löst beides.</p>
@@ -1143,6 +1150,16 @@ body{margin:0}
     var sl=wxSlots(),stale=wxStale(c);
     el.innerHTML=keys.map(function(k){return wxLine(k,iso,c)}).join("")+(c&&c.ts?'<div class="wxs">Open-Meteo · Stand '+cnTime(c.ts,true)+' China-Zeit'+(stale?' · wird aktualisiert, sobald Netz da ist':' · nächste Aktualisierung '+cnTime(sl.next)+' Uhr')+'</div>':'<div class="wxs">Wetter wird geladen …</div>')}
   function wxTick(){var el=document.getElementById("wx");if(!el||document.visibilityState!=="visible"||!wxStale(wxCache()))return;var iso=el.getAttribute("data-d"),d=DAYS[idx(iso)];if(!d)return;wxLoad(true).then(function(c){wxPaint(iso,d.wx,c)})}
+  // Apple Karten parallel zu Amap: Koordinaten (WGS-84) bzw. Suchbegriff aus dem Amap-Link übernehmen
+  var CITYC={"上海":[31.2304,121.4737],"杭州":[30.2741,120.1551],"西安":[34.3416,108.9398],"北京":[39.9042,116.4074]};
+  function appleFrom(app,web){
+    try{
+      if(app&&app.indexOf("iosamap://viewMap")===0){var u=new URL(app.replace("iosamap://","http://x/"));var la=u.searchParams.get("lat"),lo=u.searchParams.get("lon"),nm=u.searchParams.get("poiname")||"";if(la&&lo)return {app:"maps://?ll="+la+","+lo+"&q="+encodeURIComponent(nm),web:"https://maps.apple.com/?ll="+la+","+lo+"&q="+encodeURIComponent(nm)}}
+      if(web&&web.indexOf("uri.amap.com/marker")>=0){var m=new URL(web),pos=(m.searchParams.get("position")||"").split(","),nm2=m.searchParams.get("name")||"";if(pos.length===2)return {app:"maps://?ll="+pos[1]+","+pos[0]+"&q="+encodeURIComponent(nm2),web:"https://maps.apple.com/?ll="+pos[1]+","+pos[0]+"&q="+encodeURIComponent(nm2)}}
+      if(web&&web.indexOf("uri.amap.com/search")>=0){var s2=new URL(web),kw=s2.searchParams.get("keyword")||"",ct=CITYC[s2.searchParams.get("city")||""];if(kw){var sll=ct?"&sll="+ct[0]+","+ct[1]:"";return {app:"maps://?q="+encodeURIComponent(kw)+sll,web:"https://maps.apple.com/?q="+encodeURIComponent(kw)+sll}}}
+    }catch(e){}
+    return null;
+  }
   function isChina(city){return city==="sha"||city==="hgz"||city==="xian"||city==="bj"}
   // ---------- Tagesansicht ----------
   function strip(cur){
@@ -1158,18 +1175,32 @@ body{margin:0}
     var num=s.t==="n"?'<span class="num plain">·</span>':'<span class="num">'+n+'</span>';
     var acts="";
     if(s.pin)acts+=lk(s.pin,"ib go",IC.pin,"In Karten-App öffnen: "+s.label);
+    if(s.pin&&isChina(city)){var ap=appleFrom(s.pin.app,s.pin.web);if(ap)acts+=lk(ap,"ib apl","🍎","In Apple Karten öffnen: "+s.label)}
     if(s.cn&&isChina(city))acts+=showBtn({pre:"请带我去",big:s.cn,de:s.label},"ib zh","字","Für Fahrer zeigen: "+s.label);
     return '<li class="stop">'+num+'<div><div class="nm">'+esc(s.label)+'</div>'+(s.cn?'<div class="cn">'+esc(s.cn)+'</div>':'')+(s.note?'<div class="nt">'+esc(s.note)+'</div>':'')+'</div><div class="ic">'+acts+'</div></li>';
   }
   function itemRow(s,city,ic,showDay){
     var acts="";
     if(s.pin)acts+=lk(s.pin,"ib go",IC.pin,"In Karten-App öffnen: "+s.label);
+    if(s.pin&&isChina(city)){var ap=appleFrom(s.pin.app,s.pin.web);if(ap)acts+=lk(ap,"ib apl","🍎","In Apple Karten öffnen: "+s.label)}
     if(s.cn&&isChina(city))acts+=showBtn({pre:"请带我去",big:s.cn,de:s.label},"ib zh","字","Für Fahrer zeigen: "+s.label);
     var meta="";if(s.tag)meta+='<span class="tg">'+esc(s.tag)+'</span>';if(s.tier)meta+='<span class="tr" title="€ günstig · €€ moderat · €€€ gehoben">'+esc(s.tier)+'</span>';
     var near=(s.near||"")+(showDay&&s.days&&s.days.length?(s.near?" · ":"")+s.days.map(fmt).join(", "):"");
     return '<li class="stop"><span class="num plain">'+ic+'</span><div><div class="nm">'+esc(s.label)+'</div>'+(s.cn?'<div class="cn">'+esc(s.cn)+'</div>':'')+(meta?'<div class="mt2">'+meta+'</div>':'')+(near?'<div class="nt"><b>'+esc(near)+'</b></div>':'')+(s.note?'<div class="nt">'+esc(s.note)+'</div>':'')+'</div><div class="ic">'+acts+'</div></li>';
   }
   var LEG='€ günstig · €€ moderat · €€€ gehoben. „Michelin Bib Gourmand“ steht für ausgezeichnetes Preis-Leistungs-Verhältnis. Recherchestand 29.09.2026, Öffnungszeiten und Preise bitte vor Ort prüfen. Einträge ohne exakten Pin öffnen per Suche.';
+  function addApple(){
+    var root=document.getElementById("view-guide");if(!root)return;
+    root.querySelectorAll('.legend a.pl, .mapbtns a, a.maplink').forEach(function(a){
+      var app=a.getAttribute("data-app")||"",web=a.getAttribute("href")||"";
+      if(app.indexOf("iosamap://")!==0&&web.indexOf("uri.amap.com")<0)return;
+      if(a.getAttribute("data-apl")||(a.nextElementSibling&&a.nextElementSibling.classList.contains("apl")))return;
+      var ap=appleFrom(app,web);if(!ap)return;a.setAttribute("data-apl","1");
+      var n=document.createElement("a");n.className="apl";n.href=ap.web;n.setAttribute("data-app",ap.app);n.target="_blank";n.rel="noopener";n.setAttribute("aria-label","In Apple Karten öffnen");n.textContent="🍎";
+      if(a.classList.contains("maplink")){var cap=a.parentNode.querySelector(".cap");if(cap){n.className="apl inl";n.textContent="🍎 Apple Karten";cap.appendChild(document.createTextNode(" "));cap.appendChild(n)}}
+      else a.parentNode.insertBefore(n,a.nextSibling);
+    });
+  }
   function renderCityLists(){
     document.querySelectorAll(".citylists").forEach(function(el){
       var k=el.getAttribute("data-city"),L=DATA.lists&&DATA.lists[k];if(!L)return;
@@ -1180,7 +1211,8 @@ body{margin:0}
   }
   function hotelCard(key,city){
     var h=HOT[key];if(!h)return "";
-    var acts=lk(h.nav.pin,"btn pri",IC.pin+"Karte","Hotel in Karten-App öffnen");
+    var acts=lk(h.nav.pin,"btn pri",IC.pin+(isChina(city)?"Amap":"Karte"),"Hotel in Karten-App öffnen");
+    if(isChina(city)){var aph=appleFrom(h.nav.pin.app,h.nav.pin.web);if(aph)acts+=lk(aph,"btn apl2","🍎 Apple Karten","Hotel in Apple Karten öffnen")}
     if(isChina(city)){acts+=showBtn({pre:"请带我去",big:h.cn||h.addr,addr:h.cn?h.addr:"",de:h.name+(h.cn?"":" (chinesischen Hotelnamen aus der Buchung ergänzen)")},"btn",'<span style="font:900 16px/1 var(--cjk)">字</span>Für Fahrer',"Hoteladresse für Fahrer zeigen")}
     if(h.tel)acts+='<a class="btn" href="tel:'+esc(h.tel.replace(/[^+\d]/g,""))+'">'+IC.tel+'Anrufen</a>';
     return '<section class="card hotel"><h2>Hotel heute</h2><div class="hn">'+esc(h.name)+'</div>'+(h.cn?'<div class="hc">'+esc(h.cn)+'</div>':'')+'<div class="hs">'+esc(h.addr)+'</div>'+((h.ci||h.co)?'<div class="hs">'+esc([h.ci,h.co].filter(Boolean).join(" · "))+'</div>':'')+'<div class="acts">'+acts+'</div></section>';
@@ -1209,7 +1241,7 @@ body{margin:0}
       if(d.routes.length)h+='<div class="routes">'+d.routes.map(function(r){return lk(r,"btn",IC.route+esc(r.label),r.label)}).join("")+'</div>';
       var n=0;h+='<ol class="stops">'+d.stops.map(function(s){if(s.t!=="n")n++;return stopRow(s,n,cc,d.city)}).join("")+'</ol>';
       if(isChina(d.city)&&d.stops.some(function(s){return s.cn}))h+='<div class="acts" style="margin:10px 0 0"><button type="button" class="btn" data-shareday="'+d.date+'"><span class="wcl">微</span>Ziele auf Chinesisch teilen</button></div>';
-      h+='<p class="small" style="margin:8px 0 0">'+IC.pin.replace('<svg','<svg style="width:14px;height:14px;vertical-align:-2px;stroke:currentColor;fill:none;stroke-width:2"')+' öffnet den Ort in der Karten-App, dort startet ihr die Route'+(isChina(d.city)?' · <b style="font-family:var(--cjk)">字</b> Ziel für Taxi/Didi zeigen':'')+'</p></section>';
+      h+='<p class="small" style="margin:8px 0 0">'+IC.pin.replace('<svg','<svg style="width:14px;height:14px;vertical-align:-2px;stroke:currentColor;fill:none;stroke-width:2"')+' öffnet den Ort in der Karten-App, dort startet ihr die Route'+(isChina(d.city)?' · 🍎 Apple Karten · <b style="font-family:var(--cjk)">字</b> Ziel für Taxi/Didi zeigen':'')+'</p></section>';
     }
     var mfc=d.city==="reise"?"all":d.city;
     if(d.food.length||d.city!=="reise")h+='<section class="card" style="--cc:'+cc+'"><h2>Essen in der Nähe</h2>'+(d.food.length?'<ol class="stops">'+d.food.map(function(s){return itemRow(s,d.city,"🍜",false)}).join("")+'</ol>':'')+'<a class="btn" href="#hilfe-essen/'+mfc+'" style="margin-top:8px">🥢 Speisekarten-Hilfe'+(mfc==="all"?"":" "+esc(CITY[mfc][0]))+'</a></section>';
@@ -1338,7 +1370,7 @@ body{margin:0}
   document.addEventListener("touchstart",function(e){if(!$("#view-tag").classList.contains("on"))return;var t=e.touches[0];sx=t.clientX;sy=t.clientY},{passive:true});
   document.addEventListener("touchend",function(e){if(!$("#view-tag").classList.contains("on")||e.target.closest("#strip"))return;var t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;if(Math.abs(dx)>70&&Math.abs(dy)<45){var cur=location.hash.indexOf("#tag/")===0?location.hash.slice(5):defaultDay(),i=idx(cur),n=DAYS[i+(dx<0?1:-1)];if(n)location.hash="tag/"+n.date}},{passive:true});
   // Start
-  renderHelpTop();renderCityLists();route();
+  renderHelpTop();renderCityLists();addApple();route();
   syncStatus(SY.url?"run":"aus");syncNow();
   document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible")syncNow()});
   window.addEventListener("online",function(){syncNow();wxTick()});
