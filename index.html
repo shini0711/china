@@ -270,6 +270,14 @@ body{padding-bottom:calc(66px + env(safe-area-inset-bottom,0px))}
 #upd button{min-height:40px;padding:6px 12px;border-radius:8px;border:0;background:var(--jade);color:#fff;font:600 14px/1 var(--serif)}
 @media (min-width:800px){.dwrap,.vh{padding-left:0;padding-right:0}}
 
+.syncline{margin:0 4px 8px;font-size:14px;color:var(--ink2)}
+[data-syncstate]::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:var(--line);vertical-align:1px}
+[data-syncstate][data-s="ok"]::before{background:var(--jade)}
+[data-syncstate][data-s="err"]::before{background:var(--seal)}
+[data-syncstate][data-s="run"]::before{background:var(--d3)}
+.fl{display:block;font-size:14px;font-weight:600;margin:10px 0 0}
+.fl input{display:block;width:100%;margin-top:4px;min-height:44px;padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font:400 16px/1.2 var(--serif)}
+
 </style>
 </head>
 <body>
@@ -971,6 +979,21 @@ body{padding-bottom:calc(66px + env(safe-area-inset-bottom,0px))}
   // ---------- Speicher (Checklisten) ----------
   function sget(k){try{return localStorage.getItem("tg:"+k)}catch(e){return null}}
   function sset(k,v){try{v==null?localStorage.removeItem("tg:"+k):localStorage.setItem("tg:"+k,v)}catch(e){}}
+  // ---------- Sync (optional, Cloudflare Worker) ----------
+  var SY={url:sget("sync:url"),key:sget("sync:key"),busy:false,timer:null,state:"aus"};
+  (function migrate(){try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.indexOf("tg:done:")===0){var id=k.slice(8);if(!sget("ts:"+id))sset("ts:"+id,"1")}}}catch(e){}})();
+  function localItems(){var o={};try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.indexOf("tg:ts:")===0){var id=k.slice(6);o[id]={v:sget("done:"+id)==="1"?1:0,t:+sget("ts:"+id)||0}}}}catch(e){}return o}
+  function setDone(id,v){sset("done:"+id,v?"1":null);sset("ts:"+id,String(Date.now()));sset("sync:dirty","1");clearTimeout(SY.timer);SY.timer=setTimeout(syncNow,700)}
+  function paintTodos(){document.querySelectorAll("[data-todo]").forEach(function(cb){var on=sget("done:"+cb.getAttribute("data-todo"))==="1";cb.checked=on;var li=cb.closest("li");if(li){li.classList.toggle("done",on);if(on)li.classList.remove("late")}})}
+  function applyRemote(items){var ch=false;Object.keys(items||{}).forEach(function(id){var it=items[id],lt=+sget("ts:"+id)||0;if(it&&it.t>lt){sset("done:"+id,it.v?"1":null);sset("ts:"+id,String(it.t));ch=true}});if(ch)paintTodos()}
+  function syncStatus(s){SY.state=s;var el=document.querySelectorAll("[data-syncstate]");var last=+sget("sync:last")||0;var t=last?new Date(last).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}):"";var txt=!SY.url?"Sync nicht eingerichtet":(s==="ok"?"Sync aktiv · zuletzt "+t:(s==="err"?"Sync gerade nicht erreichbar"+(sget("sync:dirty")?", wird nachgeholt":"")+(t?" · zuletzt "+t:""):"Sync läuft …"));el.forEach(function(x){x.textContent=txt;x.setAttribute("data-s",!SY.url?"off":s)})}
+  function syncNow(){if(!SY.url||!SY.key||SY.busy)return;SY.busy=true;syncStatus("run");
+    fetch(SY.url.replace(/\/+$/,"")+"/state?k="+encodeURIComponent(SY.key),{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({items:localItems()}),cache:"no-store"})
+    .then(function(r){if(!r.ok)throw new Error(r.status);return r.json()}).then(function(d){applyRemote(d.items);sset("sync:dirty",null);sset("sync:last",String(Date.now()));SY.busy=false;syncStatus("ok")})
+    .catch(function(){SY.busy=false;syncStatus("err")})}
+  function syncSave(url,key){SY.url=(url||"").trim()||null;SY.key=(key||"").trim()||null;sset("sync:url",SY.url);sset("sync:key",SY.key);syncStatus("run");syncNow()}
+  function b64e(s){return btoa(unescape(encodeURIComponent(s))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")}
+  function b64d(s){s=s.replace(/-/g,"+").replace(/_/g,"/");while(s.length%4)s+="=";return decodeURIComponent(escape(atob(s)))}
   // ---------- Datum ----------
   function todayISO(){var d=new Date(),t=new Date(d.getTime()+(8*60+d.getTimezoneOffset())*60000);return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0")}
   function fmt(iso){var p=iso.split("-"),d=new Date(+p[0],+p[1]-1,+p[2]);return WD[d.getDay()]+" "+p[2]+"."+p[1]+"."}
@@ -1037,7 +1060,7 @@ body{padding-bottom:calc(66px + env(safe-area-inset-bottom,0px))}
   }
   // ---------- Buchungen ----------
   function renderBook(){
-    var h='<h1>Buchungen</h1><p class="sub">Alles Feste auf einen Blick. Häkchen werden nur auf diesem Gerät gespeichert.</p>';
+    var h='<h1>Buchungen</h1><p class="sub">Alles Feste auf einen Blick.</p><p class="syncline"><span data-syncstate></span> · <a href="#hilfe-sync">Einstellungen</a></p>';
     var open=BOOK.open.slice().sort(function(a,b){return a[0]<b[0]?-1:1}).map(function(o){return [o[1],o[3],o[2],o[0]]});
     h+='<section class="card"><h2>Offen: reservieren und bestätigen</h2>'+todoList(open,true)+'</section>';
     function rows(title,arr,f){return '<section class="card"><h2>'+title+'</h2><ul class="rows">'+arr.map(f).join("")+'</ul></section>'}
@@ -1046,14 +1069,20 @@ body{padding-bottom:calc(66px + env(safe-area-inset-bottom,0px))}
     h+=rows("Tickets und Touren",BOOK.tickets,function(r){return '<li><span class="w">'+esc(r[0])+'</span><span><span class="t">'+esc(r[1])+'</span><br><span class="m">'+esc(r[2])+'</span><br><a href="'+esc(r[3])+'" target="_blank" rel="noopener">Buchung auf Trip.com</a></span></li>'});
     var hk=["tpe","sha","hgz","xian","bj"],cm={tpe:"tpe",sha:"sha",hgz:"hgz",xian:"xian",bj:"bj"};
     h+='<section class="card"><h2>Hotels</h2><ul class="rows">'+hk.map(function(k){var o=HOT[k];return '<li><span class="w" style="color:'+CITY[cm[k]][1]+'">'+esc(CITY[cm[k]][0])+'</span><span><span class="t">'+esc(o.name)+'</span><br><span class="m">'+esc(o.nights)+(o.ci?' · '+esc(o.ci)+' · '+esc(o.co):'')+'</span>'+(o.cn?'<br><span style="font-family:var(--cjk)">'+esc(o.cn)+'</span>':'')+'<br><span class="m" style="font-family:var(--cjk)">'+esc(o.addr)+'</span></span></li>'}).join("")+'</ul></section>';
-    $("#view-book .vh").innerHTML=h;
+    $("#view-book .vh").innerHTML=h;syncStatus(SY.state);
   }
   // ---------- Hilfe ----------
   function renderHelpTop(){
     var hk=["tpe","sha","hgz","xian","bj"];
     var g='<section class="card"><h2>Hoteladresse für Taxi zeigen</h2><div class="hgrid">'+hk.map(function(k){var o=HOT[k],c=CITY[k][1];return showBtn({pre:"请带我去",big:o.cn||o.addr,addr:o.cn?o.addr:"",de:o.name+(o.cn?"":" (chinesischen Hotelnamen aus der Buchung ergänzen)")},"",esc(CITY[k][0])+'<small>'+esc(o.name)+'</small>',"Adresse zeigen: "+o.name).replace('<button type="button" class=""','<button type="button" style="--cc:'+c+'"')}).join("")+'</div></section>';
     g+='<section class="card"><h2>Notruf</h2><div class="sos"><a href="tel:110"><b>110</b>Polizei (TW + CN)</a><a href="tel:120"><b>120</b>Rettung China</a><a href="tel:119"><b>119</b>Rettung Taiwan / Feuer</a></div></section>';
+    g+='<section class="card" id="hilfe-sync"><h2>Häkchen zwischen euren Handys syncen</h2><p class="syncline"><span data-syncstate></span></p><p class="small">Einmal einrichten, dann gleichen beide Handys ihre Häkchen automatisch ab, auch nachträglich, wenn eines offline war.</p><label class="fl">Worker-Adresse<input id="sy-url" type="url" inputmode="url" autocomplete="off" placeholder="https://trip-sync.….workers.dev"></label><label class="fl">Sync-Code<input id="sy-key" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="geheimer Code"></label><div class="acts"><button type="button" class="btn pri" id="sy-save">Speichern und testen</button><button type="button" class="btn" id="sy-gen">Code erzeugen</button><button type="button" class="btn" id="sy-share">Link fürs zweite Handy</button><button type="button" class="btn" id="sy-off">Sync ausschalten</button></div><p class="small" id="sy-msg" role="status"></p></section>';
     $("#helptop").innerHTML=g;
+    $("#sy-url").value=SY.url||"";$("#sy-key").value=SY.key||"";syncStatus(SY.state);
+    $("#sy-save").addEventListener("click",function(){syncSave($("#sy-url").value,$("#sy-key").value);$("#sy-msg").textContent="Gespeichert. Der Status oben zeigt, ob die Verbindung steht."});
+    $("#sy-gen").addEventListener("click",function(){var a=new Uint8Array(18);crypto.getRandomValues(a);var c=Array.from(a,function(x){return("0"+x.toString(16)).slice(-2)}).join("");$("#sy-key").value=c;$("#sy-msg").textContent="Neuer Code erzeugt. Denselben Code in Cloudflare als Secret SYNC_KEY eintragen, dann hier speichern."});
+    $("#sy-share").addEventListener("click",function(){var u=$("#sy-url").value.trim(),k=$("#sy-key").value.trim();if(!u||!k){$("#sy-msg").textContent="Erst Adresse und Code eintragen.";return}var link=location.origin+location.pathname+"#sync="+b64e(u+"|"+k);if(navigator.share){navigator.share({title:"Reise-Sync",text:"Link einmal auf dem zweiten Handy öffnen:",url:link}).catch(function(){})}else if(navigator.clipboard){navigator.clipboard.writeText(link).then(function(){$("#sy-msg").textContent="Link kopiert. Auf dem zweiten Handy einmal öffnen."})}else{$("#sy-msg").textContent=link}});
+    $("#sy-off").addEventListener("click",function(){syncSave("","");$("#sy-url").value="";$("#sy-key").value="";$("#sy-msg").textContent="Sync ausgeschaltet. Häkchen bleiben auf diesem Gerät."});
     // Sätze zum Zeigen
     document.querySelectorAll("#view-help .phr div").forEach(function(el){
       var cn=el.querySelector(".cjk"),sm=el.querySelector(".small");if(!cn)return;
@@ -1075,6 +1104,7 @@ body{padding-bottom:calc(66px + env(safe-area-inset-bottom,0px))}
   }
   function route(){
     var h=decodeURIComponent(location.hash.replace(/^#/,""));
+    if(h.indexOf("sync=")===0){try{var pr=b64d(h.slice(5)).split("|");syncSave(pr[0],pr.slice(1).join("|"));renderHelpTop()}catch(x){}location.replace("#hilfe-sync");return}
     if(!h||h==="tag"){setView("tag");renderDay(defaultDay());window.scrollTo(0,0);return}
     if(h.indexOf("tag/")===0){setView("tag");renderDay(h.slice(4));window.scrollTo(0,0);return}
     if(h==="buchungen"){renderBook();setView("buchungen");window.scrollTo(0,0);return}
@@ -1084,7 +1114,7 @@ body{padding-bottom:calc(66px + env(safe-area-inset-bottom,0px))}
     if(el){var inHelp=$("#view-help").contains(el);setView(inHelp?"hilfe":"guide");setTimeout(function(){el.scrollIntoView({block:"start"})},0);return}
     setView("tag");renderDay(defaultDay());
   }
-  window.addEventListener("hashchange",route);
+  window.addEventListener("hashchange",function(){route();syncNow()});
   document.addEventListener("click",function(e){
     var t=e.target.closest?e.target.closest("[data-day],[data-show],[data-v],#show .close,#show .rot"):null;if(!t)return;
     if(t.matches("#show .close")){closeShow();return}
@@ -1094,13 +1124,17 @@ body{padding-bottom:calc(66px + env(safe-area-inset-bottom,0px))}
     if(t.hasAttribute("data-v")){var v=t.getAttribute("data-v");if(v==="tag"){var cur=location.hash.indexOf("#tag/")===0?location.hash:"#tag/"+defaultDay();if(location.hash===cur)route();else location.hash=cur.slice(1)}else{if(location.hash==="#"+v)route();else location.hash=v}}
   });
   document.addEventListener("keydown",function(e){if(e.key==="Escape")closeShow();if((e.key==="Enter"||e.key===" ")&&e.target.hasAttribute&&e.target.hasAttribute("data-show")&&e.target.tagName!=="BUTTON"){e.preventDefault();openShow(JSON.parse(e.target.getAttribute("data-show")))}});
-  document.addEventListener("change",function(e){var id=e.target.getAttribute&&e.target.getAttribute("data-todo");if(!id)return;sset("done:"+id,e.target.checked?"1":null);var li=e.target.closest("li");if(li){li.classList.toggle("done",e.target.checked);if(e.target.checked)li.classList.remove("late")}});
+  document.addEventListener("change",function(e){var id=e.target.getAttribute&&e.target.getAttribute("data-todo");if(!id)return;setDone(id,e.target.checked);var li=e.target.closest("li");if(li){li.classList.toggle("done",e.target.checked);if(e.target.checked)li.classList.remove("late")}});
   // Wischen zwischen Tagen
   var sx=0,sy=0;
   document.addEventListener("touchstart",function(e){if(!$("#view-tag").classList.contains("on"))return;var t=e.touches[0];sx=t.clientX;sy=t.clientY},{passive:true});
   document.addEventListener("touchend",function(e){if(!$("#view-tag").classList.contains("on")||e.target.closest("#strip"))return;var t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;if(Math.abs(dx)>70&&Math.abs(dy)<45){var cur=location.hash.indexOf("#tag/")===0?location.hash.slice(5):defaultDay(),i=idx(cur),n=DAYS[i+(dx<0?1:-1)];if(n)location.hash="tag/"+n.date}},{passive:true});
   // Start
   renderHelpTop();route();
+  syncStatus(SY.url?"run":"aus");syncNow();
+  document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible")syncNow()});
+  window.addEventListener("online",syncNow);
+  setInterval(function(){if(document.visibilityState==="visible")syncNow()},45000);
   // ---------- Offline / Homescreen ----------
   if("serviceWorker" in navigator&&location.protocol==="https:"){
     navigator.serviceWorker.register("sw.js").catch(function(){});
