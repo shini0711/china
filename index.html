@@ -400,7 +400,6 @@ a.apl.inl{min-height:32px;margin-left:4px}
 .fxo{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
 .fxv{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .fxs{font-size:15px;font-weight:700;color:var(--ink2)}
-a.fxchip{color:var(--jade);font-weight:700;white-space:nowrap}
 
 </style>
 </head>
@@ -1255,7 +1254,7 @@ a.fxchip{color:var(--jade);font-weight:700;white-space:nowrap}
   function renderDay(iso){
     var i=idx(iso);if(i<0){iso=defaultDay();i=idx(iso)}
     var d=DAYS[i],cc=CITY[d.city][1],h="";
-    h+='<div class="dhead" style="--cc:'+cc+'"><div class="dmeta"><span class="cchip">'+esc(CITY[d.city][0])+'</span><span>Tag '+(i+1)+' von '+DAYS.length+' · '+fmt(d.date)+'</span>'+(d.date===todayISO()?'<span class="cchip" style="background:var(--seal)">Heute</span>':'')+'</div><h1>'+esc(d.title)+'</h1><div class="place">'+esc(d.place)+' · <a class="fxchip" href="#hilfe-waehrung">€ ↔ NT$ / ¥ Rechner</a></div></div>';
+    h+='<div class="dhead" style="--cc:'+cc+'"><div class="dmeta"><span class="cchip">'+esc(CITY[d.city][0])+'</span><span>Tag '+(i+1)+' von '+DAYS.length+' · '+fmt(d.date)+'</span>'+(d.date===todayISO()?'<span class="cchip" style="background:var(--seal)">Heute</span>':'')+'</div><h1>'+esc(d.title)+'</h1><div class="place">'+esc(d.place)+'</div></div>';
     var t=todayISO();
     if(t<DAYS[0].date&&i===0){var ms=new Date(2026,9,3)-new Date(t.replace(/-/g,"/"));var n=Math.round(ms/864e5);h+='<div class="banner"><b>Noch '+n+' Tag'+(n===1?'':'e')+' bis zum Abflug</b>Unter „Buchungen“ stehen die offenen Reservierungen mit Fälligkeit.</div>'}
     h+='<section class="card wx" id="wx" data-d="'+d.date+'"><div class="wxs">Wetter wird geladen …</div></section>';
