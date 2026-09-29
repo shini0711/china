@@ -373,6 +373,11 @@ html,body{position:fixed;inset:0;width:100%;height:100%;margin:0;overflow:hidden
 #upd{position:absolute;bottom:calc(66px + 10px)}
 #diag{font-size:12px;color:var(--ink2);word-break:break-all}
 
+/* === Korrektur: Seite bleibt eine normale, nicht gesperrte Seite; nur der Inhaltsbereich scrollt === */
+html,body{position:static;inset:auto;width:auto;height:100%;overflow:visible;overscroll-behavior-y:none}
+body{margin:0}
+#app{position:relative;left:auto;right:auto;top:auto;height:var(--vh,100%)}
+
 </style>
 </head>
 <body>
@@ -996,19 +1001,18 @@ html,body{position:fixed;inset:0;width:100%;height:100%;margin:0;overflow:hidden
   var WD = ["So","Mo","Di","Mi","Do","Fr","Sa"];
   var $ = function(s,r){return (r||document).querySelector(s)};
   var SCR = document.getElementById("scroller");
-  // Container immer an den tatsächlich sichtbaren Bereich binden (iOS: Adress-/Symbolleisten, Tastatur)
+  // Höhe des App-Containers = tatsächlich sichtbare Höhe (ohne die Seite selbst scrollbar zu machen)
   var APP=document.getElementById("app");
+  var PROBE=document.createElement("div");PROBE.style.cssText="position:fixed;left:0;top:0;width:0;visibility:hidden;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0";document.body.appendChild(PROBE);
   function fitApp(){
-    var vv=window.visualViewport,t=0,h=window.innerHeight;
-    if(vv){t=Math.max(0,Math.round(vv.offsetTop));h=Math.round(vv.height)}
-    APP.style.setProperty("--vt",t+"px");APP.style.setProperty("--vh",h+"px");
-    if(window.scrollX||window.scrollY)window.scrollTo(0,0);
+    var vv=window.visualViewport,h=vv?Math.round(vv.height):window.innerHeight;
+    APP.style.setProperty("--vh",h+"px");
     var dg=document.getElementById("diag");
-    if(dg)dg.textContent="Anzeige: Fenster "+innerWidth+"×"+innerHeight+", sichtbar "+(vv?Math.round(vv.width)+"×"+Math.round(vv.height)+" ab "+Math.round(vv.offsetTop):"–")+", App "+APP.offsetHeight+" hoch";
+    if(dg){var cs=getComputedStyle(PROBE);
+      dg.textContent="Fenster "+innerWidth+"×"+innerHeight+" · sichtbar "+(vv?Math.round(vv.width)+"×"+Math.round(vv.height)+" ab "+Math.round(vv.offsetTop):"–")+" · App "+APP.offsetHeight+" · Seite scrollY "+Math.round(window.scrollY)+" · Bildschirm "+screen.width+"×"+screen.height+" · Rand oben/unten "+cs.paddingTop+"/"+cs.paddingBottom+" · Tab-Leiste "+Math.round(document.querySelector(".tabbar").getBoundingClientRect().bottom)+" · Datumsleiste "+Math.round((document.getElementById("strip")||{getBoundingClientRect:function(){return {top:-1}}}).getBoundingClientRect().top)}
   }
-  if(window.visualViewport){visualViewport.addEventListener("resize",fitApp);visualViewport.addEventListener("scroll",fitApp)}
+  if(window.visualViewport){visualViewport.addEventListener("resize",fitApp)}
   window.addEventListener("resize",fitApp);window.addEventListener("orientationchange",fitApp);window.addEventListener("pageshow",fitApp);
-  window.addEventListener("scroll",function(){if(window.scrollX||window.scrollY)window.scrollTo(0,0)},{passive:true});
   fitApp();setTimeout(fitApp,300);setTimeout(fitApp,1200);
   var esc = function(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})};
   var IC = {
