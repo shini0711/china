@@ -1041,7 +1041,14 @@ nav.top{padding-top:0!important}
   var WXC={0:["☀️","klar"],1:["🌤️","heiter"],2:["⛅","wolkig"],3:["☁️","bedeckt"],45:["🌫️","Nebel"],48:["🌫️","Nebel"],51:["🌦️","Niesel"],53:["🌦️","Niesel"],55:["🌦️","Niesel"],56:["🌧️","gefr. Niesel"],57:["🌧️","gefr. Niesel"],61:["🌧️","leichter Regen"],63:["🌧️","Regen"],65:["🌧️","starker Regen"],66:["🌧️","gefr. Regen"],67:["🌧️","gefr. Regen"],71:["🌨️","Schnee"],73:["🌨️","Schnee"],75:["🌨️","Schnee"],77:["🌨️","Schnee"],80:["🌦️","Schauer"],81:["🌦️","Schauer"],82:["⛈️","starke Schauer"],85:["🌨️","Schneeschauer"],86:["🌨️","Schneeschauer"],95:["⛈️","Gewitter"],96:["⛈️","Gewitter"],99:["⛈️","Gewitter"]};
   var WXL=DATA.wxloc,WXK=Object.keys(WXL);
   function wxCache(){try{return JSON.parse(sget("wx")||"null")}catch(e){return null}}
-  function wxLoad(force){var c=wxCache();if(!force&&c&&Date.now()-c.ts<3*3600e3)return Promise.resolve(c);
+  var WXSLOTS=[6,10,14,18];
+  function wxSlots(){var now=Date.now(),cn=new Date(now+8*3600e3),y=cn.getUTCFullYear(),m=cn.getUTCMonth(),d=cn.getUTCDate(),h=cn.getUTCHours();
+    function at(dd,s){return Date.UTC(y,m,dd,s)-8*3600e3}
+    var last=null,next=null;for(var i=WXSLOTS.length-1;i>=0;i--){if(WXSLOTS[i]<=h){last=at(d,WXSLOTS[i]);next=i+1<WXSLOTS.length?at(d,WXSLOTS[i+1]):at(d+1,WXSLOTS[0]);break}}
+    if(last===null){last=at(d-1,WXSLOTS[WXSLOTS.length-1]);next=at(d,WXSLOTS[0])}return {last:last,next:next}}
+  function wxStale(c){return !c||!c.ts||c.ts<wxSlots().last}
+  function cnTime(ts,withDay){return new Date(ts).toLocaleString("de-DE",Object.assign({timeZone:"Asia/Shanghai",hour:"2-digit",minute:"2-digit"},withDay?{day:"2-digit",month:"2-digit"}:{}))}
+  function wxLoad(force){var c=wxCache();if(!force&&!wxStale(c))return Promise.resolve(c);
     var la=WXK.map(function(k){return WXL[k][1]}).join(","),lo=WXK.map(function(k){return WXL[k][2]}).join(",");
     return fetch("https://api.open-meteo.com/v1/forecast?latitude="+la+"&longitude="+lo+"&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=16",{cache:"no-store"})
     .then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(arr){var o={ts:Date.now(),loc:{}};(Array.isArray(arr)?arr:[arr]).forEach(function(x,i){o.loc[WXK[i]]=x.daily});sset("wx",JSON.stringify(o));return o}).catch(function(){return c})}
@@ -1051,7 +1058,9 @@ nav.top{padding-top:0!important}
     var hint=[];if(pp!=null&&pp>=50)hint.push("Schirm");if(mn<=10)hint.push("warme Schicht");if(mx>=30)hint.push("Wasser, Sonnenschutz");
     return '<div class="wxr"><span class="wi">'+w[0]+'</span><span><b>'+esc(name)+'</b> '+mx+'° / '+mn+'° · '+esc(w[1])+(pp!=null?' · Regen '+pp+' %':'')+(hint.length?'<br><span class="wh">Heute: '+esc(hint.join(", "))+'</span>':'')+'</span></div>'}
   function wxPaint(iso,keys,c){var el=document.getElementById("wx");if(!el||el.getAttribute("data-d")!==iso)return;var t=c&&c.ts?new Date(c.ts).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"";
-    el.innerHTML=keys.map(function(k){return wxLine(k,iso,c)}).join("")+(c&&c.ts?'<div class="wxs">Vorhersage Open-Meteo · Stand '+t+'</div>':'')}
+    var sl=wxSlots(),stale=wxStale(c);
+    el.innerHTML=keys.map(function(k){return wxLine(k,iso,c)}).join("")+(c&&c.ts?'<div class="wxs">Open-Meteo · Stand '+cnTime(c.ts,true)+' China-Zeit'+(stale?' · wird aktualisiert, sobald Netz da ist':' · nächste Aktualisierung '+cnTime(sl.next)+' Uhr')+'</div>':'<div class="wxs">Wetter wird geladen …</div>')}
+  function wxTick(){var el=document.getElementById("wx");if(!el||document.visibilityState!=="visible"||!wxStale(wxCache()))return;var iso=el.getAttribute("data-d"),d=DAYS[idx(iso)];if(!d)return;wxLoad(true).then(function(c){wxPaint(iso,d.wx,c)})}
   function isChina(city){return city==="sha"||city==="hgz"||city==="xian"||city==="bj"}
   // ---------- Tagesansicht ----------
   function strip(cur){
@@ -1207,7 +1216,9 @@ nav.top{padding-top:0!important}
   renderHelpTop();route();
   syncStatus(SY.url?"run":"aus");syncNow();
   document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible")syncNow()});
-  window.addEventListener("online",syncNow);
+  window.addEventListener("online",function(){syncNow();wxTick()});
+  document.addEventListener("visibilitychange",wxTick);
+  setInterval(wxTick,60000);
   setInterval(function(){if(document.visibilityState==="visible")syncNow()},45000);
   // ---------- Offline / Homescreen ----------
   if("serviceWorker" in navigator&&location.protocol==="https:"){
