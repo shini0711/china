@@ -421,6 +421,7 @@ details.wxv[open] summary{border:0;margin:0}
   </details>
 </div>
 </section>
+<div class="vh" id="helpsync" style="padding-top:0"></div>
 </div>
 <div id="view-guide" class="view">
 
@@ -1198,10 +1199,12 @@ details.wxv[open] summary{border:0;margin:0}
   function renderHelpTop(){
     var hk=["tpe","sha","hgz","xian","bj"];
     var g='<section class="card"><h2>Hoteladresse für Taxi zeigen</h2><div class="hgrid">'+hk.map(function(k){var o=HOT[k],c=CITY[k][1];return showBtn({pre:"请带我去",big:o.cn||o.addr,addr:o.cn?o.addr:"",de:o.name+(o.cn?"":" (chinesischen Hotelnamen aus der Buchung ergänzen)")},"",esc(CITY[k][0])+'<small>'+esc(o.name)+'</small>',"Adresse zeigen: "+o.name).replace('<button type="button" class=""','<button type="button" style="--cc:'+c+'"')}).join("")+'</div></section>';
-    g+='<section class="card" id="hilfe-sync"><h2>Häkchen zwischen euren Handys syncen</h2><p class="syncline"><span data-syncstate></span></p><p class="small">Einmal einrichten, dann gleichen beide Handys ihre Häkchen automatisch ab, auch nachträglich, wenn eines offline war.</p><label class="fl">Worker-Adresse<input id="sy-url" type="url" inputmode="url" autocomplete="off" placeholder="https://trip-sync.….workers.dev"></label><label class="fl">Sync-Code<input id="sy-key" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="geheimer Code"></label><div class="acts"><button type="button" class="btn pri" id="sy-save">Speichern und testen</button><button type="button" class="btn" id="sy-gen">Code erzeugen</button><button type="button" class="btn" id="sy-share">Link fürs zweite Handy</button><button type="button" class="btn" id="sy-off">Sync ausschalten</button></div><p class="small" id="sy-msg" role="status"></p></section>';
     g+='<section class="card" id="hilfe-essen"><h2>Speisekarten-Hilfe</h2><div class="chips" role="tablist">'+[["all","Alle"],["tpe","Taiwan"],["sha","Shanghai"],["hgz","Hangzhou"],["xian","Xi\'an"],["bj","Beijing"]].map(function(x){return '<button type="button" data-mf="'+x[0]+'">'+x[1]+'</button>'}).join("")+'</div><input id="mq" type="search" placeholder="Suchen: Ente, Nudeln, 面 …" autocomplete="off"><div id="menu"></div></section>';
     g+='<section class="card"><h2>Notruf</h2><div class="sos"><a href="tel:110"><b>110</b>Polizei (TW + CN)</a><a href="tel:120"><b>120</b>Rettung China</a><a href="tel:119"><b>119</b>Rettung Taiwan / Feuer</a></div></section>';
     $("#helptop").innerHTML=g;renderMenu();
+    var g2="";
+    g2+='<section class="card" id="hilfe-sync"><h2>Häkchen zwischen euren Handys syncen</h2><p class="syncline"><span data-syncstate></span></p><p class="small">Einmal einrichten, dann gleichen beide Handys ihre Häkchen automatisch ab, auch nachträglich, wenn eines offline war.</p><label class="fl">Worker-Adresse<input id="sy-url" type="url" inputmode="url" autocomplete="off" placeholder="https://trip-sync.….workers.dev"></label><label class="fl">Sync-Code<input id="sy-key" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="geheimer Code"></label><div class="acts"><button type="button" class="btn pri" id="sy-save">Speichern und testen</button><button type="button" class="btn" id="sy-gen">Code erzeugen</button><button type="button" class="btn" id="sy-share">Link fürs zweite Handy</button><button type="button" class="btn" id="sy-off">Sync ausschalten</button></div><p class="small" id="sy-msg" role="status"></p></section>';
+    $("#helpsync").innerHTML=g2;
     $("#mq").addEventListener("input",function(){renderMenu()});
     $("#sy-url").value=SY.url||"";$("#sy-key").value=SY.key||"";syncStatus(SY.state);
     $("#sy-save").addEventListener("click",function(){syncSave($("#sy-url").value,$("#sy-key").value);$("#sy-msg").textContent="Gespeichert. Der Status oben zeigt, ob die Verbindung steht."});
@@ -1285,7 +1288,7 @@ details.wxv[open] summary{border:0;margin:0}
   setInterval(function(){if(document.visibilityState==="visible")syncNow()},45000);
   // ---------- Offline / Homescreen ----------
   if("serviceWorker" in navigator&&location.protocol==="https:"){
-    navigator.serviceWorker.register("sw.js").catch(function(){});
+    navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).then(function(r){document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible")r.update().catch(function(){})})}).catch(function(){});
     navigator.serviceWorker.addEventListener("message",function(e){if(e.data==="updated")$("#upd").classList.add("on")});
     $("#upd button").addEventListener("click",function(){location.reload()});
   }
