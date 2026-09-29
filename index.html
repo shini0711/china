@@ -400,10 +400,6 @@ a.apl.inl{min-height:32px;margin-left:4px}
 .fxo{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
 .fxv{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .fxs{font-size:15px;font-weight:700;color:var(--ink2)}
-.fxg{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:6px;margin:12px 0 0}
-.fxg h3{grid-column:1/-1;margin:6px 0 0;font-size:14px;color:var(--ink2);font-weight:700}
-.fxg div:not(h3){display:flex;flex-direction:column;background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:6px 9px;font-size:15px}
-.fxg div span{color:var(--ink2);font-variant-numeric:tabular-nums}
 a.fxchip{color:var(--jade);font-weight:700;white-space:nowrap}
 
 </style>
@@ -1343,14 +1339,12 @@ a.fxchip{color:var(--jade);font-weight:700;white-space:nowrap}
   function fxData(){var c=null;try{c=JSON.parse(sget("fx")||"null")}catch(e){}var b=DATA.fx;return (c&&c.rates&&c.ts>b.ts)?c:b}
   function fxRate(from,to){var r=fxData().rates,e=function(c){return c==="EUR"?1:r[c]};return e(to)/e(from)}
   function nf(n,dec){return n.toLocaleString("de-DE",{minimumFractionDigits:dec,maximumFractionDigits:dec})}
-  function fxCard(){return '<section class="card" id="hilfe-waehrung"><h2>Währungsrechner (offline)</h2><div class="fxrow"><input id="fx-amt" type="text" inputmode="decimal" autocomplete="off" placeholder="Betrag" aria-label="Betrag"><div class="fxcur" role="group" aria-label="Währung wählen"><button type="button" data-fx="EUR">€</button><button type="button" data-fx="TWD">NT$</button><button type="button" data-fx="CNY">¥</button></div></div><div id="fx-out" class="fxout" aria-live="polite"></div><div id="fx-tab"></div><p class="small" id="fx-note"></p></section>'}
+  function fxCard(){return '<section class="card" id="hilfe-waehrung"><h2>Währungsrechner (offline)</h2><div class="fxrow"><input id="fx-amt" type="text" inputmode="decimal" autocomplete="off" placeholder="Betrag" aria-label="Betrag"><div class="fxcur" role="group" aria-label="Währung wählen"><button type="button" data-fx="EUR">€</button><button type="button" data-fx="TWD">NT$</button><button type="button" data-fx="CNY">¥</button></div></div><div id="fx-out" class="fxout" aria-live="polite"></div><p class="small" id="fx-note"></p></section>'}
   function fxRender(){
     var inp=$("#fx-amt");if(!inp)return;
     var cur=sget("fxcur")||"TWD",amt=parseFloat(String(inp.value).replace(/\s/g,"").replace(",","."))||0;
     document.querySelectorAll("[data-fx]").forEach(function(b){b.setAttribute("aria-pressed",b.getAttribute("data-fx")===cur?"true":"false")});
     $("#fx-out").innerHTML=["EUR","TWD","CNY"].filter(function(c){return c!==cur}).map(function(c){return '<div class="fxo"><span class="fxv">'+nf(amt*fxRate(cur,c),FXC[c].dec)+'</span><span class="fxs">'+FXC[c].sym+'</span></div>'}).join("");
-    function grid(title,from,to,vals){return '<div class="fxg"><h3>'+title+'</h3>'+vals.map(function(v){return '<div><b>'+nf(v,0)+' '+FXC[from].sym+'</b><span>'+nf(v*fxRate(from,to),FXC[to].dec)+' '+FXC[to].sym+'</span></div>'}).join("")+'</div>'}
-    $("#fx-tab").innerHTML=grid("NT$ in €","TWD","EUR",[50,100,300,500,1000,5000])+grid("¥ in €","CNY","EUR",[10,20,50,100,200,500])+grid("€ in NT$","EUR","TWD",[5,10,20,50,100])+grid("€ in ¥","EUR","CNY",[5,10,20,50,100]);
     var d=fxData(),dt=new Date(d.ts).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
     $("#fx-note").textContent="1 € = "+nf(d.rates.TWD,2)+" NT$ = "+nf(d.rates.CNY,2)+" ¥ · Stand "+dt+" ("+(d.src||"gespeichert")+"). Mittelkurs ohne Gebühren, Karten- und Bargeldkurse weichen ab. Der Rechner arbeitet offline mit dem letzten gespeicherten Kurs und aktualisiert sich bei Netz.";
   }
