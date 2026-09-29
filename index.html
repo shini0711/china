@@ -163,7 +163,11 @@ footer li{margin:2px 0}
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
 
 /* ================= App-Ebene ================= */
-body{padding-bottom:calc(66px + env(safe-area-inset-bottom,0px))}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+body{padding-bottom:0!important}
+:root{padding-top:0!important;padding-bottom:0!important}
+#scroller{position:fixed;left:0;right:0;top:env(safe-area-inset-top,0px);bottom:calc(66px + env(safe-area-inset-bottom,0px));overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:none;scroll-padding-top:64px}
+html{background:var(--paper)}
 .view{display:none}
 .view.on{display:block}
 .hero{min-height:62vh}
@@ -174,7 +178,7 @@ body{padding-bottom:calc(66px + env(safe-area-inset-bottom,0px))}
 .tabbar button[aria-current="page"] svg{stroke-width:2.3}
 
 /* Datumsleiste */
-.strip{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--paper) 94%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top,0px)}
+.strip{position:sticky;top:0;z-index:30;padding-top:0!important;background:color-mix(in srgb,var(--paper) 94%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top,0px)}
 .strip .in{display:flex;gap:6px;overflow-x:auto;padding:10px 14px;scrollbar-width:none;max-width:900px;margin:0 auto}
 .strip .in::-webkit-scrollbar{display:none}
 .strip button{flex:none;appearance:none;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;width:50px;padding:6px 0 7px;font:600 11px/1.15 var(--serif);cursor:pointer;position:relative;border-bottom:4px solid var(--cc)}
@@ -234,7 +238,7 @@ body{padding-bottom:calc(66px + env(safe-area-inset-bottom,0px))}
 .more{display:block;text-align:center;margin:8px 0 0;font-weight:600;padding:10px}
 
 /* Buchungen / Hilfe */
-.vh{max-width:760px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 16px) 14px 24px}
+.vh{max-width:760px;margin:0 auto;padding:16px 14px 24px}
 .vh > h1{font-size:30px;margin:4px 4px 6px;font-weight:800}
 .vh > p.sub{margin:0 4px 8px;color:var(--ink2)}
 .rows{list-style:none;margin:0;padding:0}
@@ -278,9 +282,13 @@ body{padding-bottom:calc(66px + env(safe-area-inset-bottom,0px))}
 .fl{display:block;font-size:14px;font-weight:600;margin:10px 0 0}
 .fl input{display:block;width:100%;margin-top:4px;min-height:44px;padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font:400 16px/1.2 var(--serif)}
 
+nav.top{padding-top:0!important}
+.ib.go{background:var(--jade);border-color:var(--jade);color:#fff}
+
 </style>
 </head>
 <body>
+<div id="scroller">
 <div id="view-tag" class="view">
   <div id="strip" class="strip" aria-label="Reisetage"><div class="in"></div></div>
   <div class="dwrap" id="daycard"></div>
@@ -913,6 +921,7 @@ body{padding-bottom:calc(66px + env(safe-area-inset-bottom,0px))}
 </div>
 </footer>
 </div>
+</div>
 
 <script>
 (function(){
@@ -968,6 +977,7 @@ body{padding-bottom:calc(66px + env(safe-area-inset-bottom,0px))}
   var DAYS = DATA.days, HOT = DATA.hotels, CITY = DATA.city, BOOK = DATA.book;
   var WD = ["So","Mo","Di","Mi","Do","Fr","Sa"];
   var $ = function(s,r){return (r||document).querySelector(s)};
+  var SCR = document.getElementById("scroller");
   var esc = function(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})};
   var IC = {
     pin:'<svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
@@ -1016,14 +1026,13 @@ body{padding-bottom:calc(66px + env(safe-area-inset-bottom,0px))}
   function stopRow(s,n,cc,city){
     var num=s.t==="n"?'<span class="num plain">·</span>':'<span class="num">'+n+'</span>';
     var acts="";
-    if(s.pin)acts+=lk(s.pin,"ib",IC.pin,"Auf Karte zeigen: "+s.label);
-    if(s.go)acts+=lk(s.go,"ib go",IC.go,"Hin navigieren: "+s.label);
+    if(s.pin)acts+=lk(s.pin,"ib go",IC.pin,"In Karten-App öffnen: "+s.label);
     if(s.cn&&isChina(city))acts+=showBtn({pre:"请带我去",big:s.cn,de:s.label},"ib zh","字","Für Fahrer zeigen: "+s.label);
     return '<li class="stop">'+num+'<div><div class="nm">'+esc(s.label)+'</div>'+(s.cn?'<div class="cn">'+esc(s.cn)+'</div>':'')+(s.note?'<div class="nt">'+esc(s.note)+'</div>':'')+'</div><div class="ic">'+acts+'</div></li>';
   }
   function hotelCard(key,city){
     var h=HOT[key];if(!h)return "";
-    var acts=lk(h.nav.pin,"btn",IC.pin+"Karte","Hotel auf Karte")+(h.nav.go?lk(h.nav.go,"btn pri",IC.go+"Zum Hotel","Zum Hotel navigieren"):"");
+    var acts=lk(h.nav.pin,"btn pri",IC.pin+"Karte","Hotel in Karten-App öffnen");
     if(isChina(city)){acts+=showBtn({pre:"请带我去",big:h.cn||h.addr,addr:h.cn?h.addr:"",de:h.name+(h.cn?"":" (chinesischen Hotelnamen aus der Buchung ergänzen)")},"btn",'<span style="font:900 16px/1 var(--cjk)">字</span>Für Fahrer',"Hoteladresse für Fahrer zeigen")}
     if(h.tel)acts+='<a class="btn" href="tel:'+esc(h.tel.replace(/[^+\d]/g,""))+'">'+IC.tel+'Anrufen</a>';
     return '<section class="card hotel"><h2>Hotel heute</h2><div class="hn">'+esc(h.name)+'</div>'+(h.cn?'<div class="hc">'+esc(h.cn)+'</div>':'')+'<div class="hs">'+esc(h.addr)+'</div>'+((h.ci||h.co)?'<div class="hs">'+esc([h.ci,h.co].filter(Boolean).join(" · "))+'</div>':'')+'<div class="acts">'+acts+'</div></section>';
@@ -1048,7 +1057,7 @@ body{padding-bottom:calc(66px + env(safe-area-inset-bottom,0px))}
       h+='<section class="card" style="--cc:'+cc+'"><h2>Ablauf</h2>';
       if(d.routes.length)h+='<div class="routes">'+d.routes.map(function(r){return lk(r,"btn",IC.route+esc(r.label),r.label)}).join("")+'</div>';
       var n=0;h+='<ol class="stops">'+d.stops.map(function(s){if(s.t!=="n")n++;return stopRow(s,n,cc,d.city)}).join("")+'</ol>';
-      h+='<p class="small" style="margin:8px 0 0">'+IC.pin.replace('<svg','<svg style="width:14px;height:14px;vertical-align:-2px;stroke:currentColor;fill:none;stroke-width:2"')+' Karte · <span style="color:var(--jade);font-weight:700">➤</span> Route ab eurem Standort'+(isChina(d.city)?' · <b style="font-family:var(--cjk)">字</b> Ziel für Taxi/Didi zeigen':'')+'</p></section>';
+      h+='<p class="small" style="margin:8px 0 0">'+IC.pin.replace('<svg','<svg style="width:14px;height:14px;vertical-align:-2px;stroke:currentColor;fill:none;stroke-width:2"')+' öffnet den Ort in der Karten-App, dort startet ihr die Route'+(isChina(d.city)?' · <b style="font-family:var(--cjk)">字</b> Ziel für Taxi/Didi zeigen':'')+'</p></section>';
     }
     if(d.food.length)h+='<section class="card" style="--cc:'+cc+'"><h2>Essen</h2><ol class="stops">'+d.food.map(function(s){return stopRow(Object.assign({},s,{t:"n"}),0,cc,d.city).replace('<span class="num plain">·</span>','<span class="num plain">🍜</span>')}).join("")+'</ol></section>';
     if(d.todo.length)h+='<section class="card"><h2>Nicht vergessen</h2>'+todoList(d.todo,false)+'</section>';
@@ -1105,11 +1114,11 @@ body{padding-bottom:calc(66px + env(safe-area-inset-bottom,0px))}
   function route(){
     var h=decodeURIComponent(location.hash.replace(/^#/,""));
     if(h.indexOf("sync=")===0){try{var pr=b64d(h.slice(5)).split("|");syncSave(pr[0],pr.slice(1).join("|"));renderHelpTop()}catch(x){}location.replace("#hilfe-sync");return}
-    if(!h||h==="tag"){setView("tag");renderDay(defaultDay());window.scrollTo(0,0);return}
-    if(h.indexOf("tag/")===0){setView("tag");renderDay(h.slice(4));window.scrollTo(0,0);return}
-    if(h==="buchungen"){renderBook();setView("buchungen");window.scrollTo(0,0);return}
-    if(h==="hilfe"||h==="praktisch"){setView("hilfe");window.scrollTo(0,0);return}
-    if(h==="guide"){setView("guide");window.scrollTo(0,0);return}
+    if(!h||h==="tag"){setView("tag");renderDay(defaultDay());SCR.scrollTo(0,0);return}
+    if(h.indexOf("tag/")===0){setView("tag");renderDay(h.slice(4));SCR.scrollTo(0,0);return}
+    if(h==="buchungen"){renderBook();setView("buchungen");SCR.scrollTo(0,0);return}
+    if(h==="hilfe"||h==="praktisch"){setView("hilfe");SCR.scrollTo(0,0);return}
+    if(h==="guide"){setView("guide");SCR.scrollTo(0,0);return}
     var el=document.getElementById(h);
     if(el){var inHelp=$("#view-help").contains(el);setView(inHelp?"hilfe":"guide");setTimeout(function(){el.scrollIntoView({block:"start"})},0);return}
     setView("tag");renderDay(defaultDay());
