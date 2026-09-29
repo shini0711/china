@@ -311,6 +311,41 @@ nav.top{padding-top:0!important}
 .ct{border:1px solid var(--line);border-radius:9px;padding:7px 8px;background:var(--paper);display:flex;flex-direction:column}
 .ct .z small{font-size:14px;color:var(--ink2);font-weight:500}
 
+:root{--wxt:#D9822B;--wxr:#4A7FC1;--wxn:rgba(30,40,60,.07)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--wxt:#F0A657;--wxr:#7FA8E0;--wxn:rgba(255,255,255,.06)}}
+:root[data-theme="dark"]{--wxt:#F0A657;--wxr:#7FA8E0;--wxn:rgba(255,255,255,.06)}
+.wxc{padding:6px 0 8px}
+.wxc+.wxc{border-top:1px solid var(--line);padding-top:10px}
+.wxt{display:flex;align-items:center;gap:10px}
+.wxt .wi{font-size:28px;line-height:1;width:34px;text-align:center}
+.wxt .wn{font-weight:800;font-size:17px;flex:1}
+.wxt .wtemp{font-weight:800;font-size:22px;font-variant-numeric:tabular-nums}
+.wxt .wtemp span{font-weight:600;font-size:16px;color:var(--ink2)}
+.wxd{font-size:14.5px;color:var(--ink2);margin:2px 0 0 44px;line-height:1.4}
+.wxc .wh{font-size:14px;color:var(--jade);font-weight:700;margin:4px 0 0 44px}
+.wxc.clim .wtemp{font-size:18px;color:var(--ink2)}
+details.wxv{margin:8px 0 0;background:none;border:0;padding:0}
+details.wxv summary{font-size:14px;font-weight:700;color:var(--jade);padding:6px 0 6px 44px;cursor:pointer;list-style:none}
+details.wxv summary::-webkit-details-marker{display:none}
+details.wxv summary::before{content:"▸ ";display:inline-block;transition:transform .15s}
+details.wxv[open] summary::before{transform:rotate(90deg)}
+details.wxv[open] summary{border:0;margin:0}
+.wxs-svg{width:100%;height:auto;display:block;margin-top:2px}
+.wxs-svg .nt{fill:var(--wxn)}
+.wxs-svg .ax{stroke:var(--line);stroke-width:1}
+.wxs-svg .rb{fill:var(--wxr);opacity:.45}
+.wxs-svg .rb.hi{opacity:.9}
+.wxs-svg .ta{fill:var(--wxt);opacity:.12}
+.wxs-svg .tl2{fill:none;stroke:var(--wxt);stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round}
+.wxs-svg .tp{fill:var(--wxt)}
+.wxs-svg .tv{font:700 11px var(--serif);fill:var(--ink)}
+.wxs-svg .ic{font-size:13px}
+.wxs-svg .hx{font:600 10.5px var(--serif);fill:var(--ink2)}
+.wxs-svg .lg{font:600 9.5px var(--serif);fill:var(--ink2)}
+.wxleg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--ink2);margin:4px 0 2px}
+.wxleg i{display:inline-block;width:14px;height:8px;border-radius:2px;margin-right:5px;vertical-align:0}
+.wxleg .k1{background:var(--wxt)}.wxleg .k2{background:var(--wxr)}.wxleg .k3{background:var(--wxn);border:1px solid var(--line)}
+
 </style>
 </head>
 <body>
@@ -1046,17 +1081,44 @@ nav.top{padding-top:0!important}
     function at(dd,s){return Date.UTC(y,m,dd,s)-8*3600e3}
     var last=null,next=null;for(var i=WXSLOTS.length-1;i>=0;i--){if(WXSLOTS[i]<=h){last=at(d,WXSLOTS[i]);next=i+1<WXSLOTS.length?at(d,WXSLOTS[i+1]):at(d+1,WXSLOTS[0]);break}}
     if(last===null){last=at(d-1,WXSLOTS[WXSLOTS.length-1]);next=at(d,WXSLOTS[0])}return {last:last,next:next}}
-  function wxStale(c){return !c||!c.ts||c.ts<wxSlots().last}
+  function wxStale(c){return !c||c.v!==2||!c.ts||c.ts<wxSlots().last}
   function cnTime(ts,withDay){return new Date(ts).toLocaleString("de-DE",Object.assign({timeZone:"Asia/Shanghai",hour:"2-digit",minute:"2-digit"},withDay?{day:"2-digit",month:"2-digit"}:{}))}
   function wxLoad(force){var c=wxCache();if(!force&&!wxStale(c))return Promise.resolve(c);
     var la=WXK.map(function(k){return WXL[k][1]}).join(","),lo=WXK.map(function(k){return WXL[k][2]}).join(",");
-    return fetch("https://api.open-meteo.com/v1/forecast?latitude="+la+"&longitude="+lo+"&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=16",{cache:"no-store"})
-    .then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(arr){var o={ts:Date.now(),loc:{}};(Array.isArray(arr)?arr:[arr]).forEach(function(x,i){o.loc[WXK[i]]=x.daily});sset("wx",JSON.stringify(o));return o}).catch(function(){return c})}
+    return fetch("https://api.open-meteo.com/v1/forecast?latitude="+la+"&longitude="+lo+"&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset&hourly=temperature_2m,precipitation_probability,weather_code,is_day&timezone=auto&forecast_days=16",{cache:"no-store"})
+    .then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(arr){var o={v:2,ts:Date.now(),loc:{},hr:{}};(Array.isArray(arr)?arr:[arr]).forEach(function(x,i){o.loc[WXK[i]]=x.daily;o.hr[WXK[i]]=x.hourly});sset("wx",JSON.stringify(o));return o}).catch(function(){return c})}
+  function hrDay(c,key,iso){var H=c&&c.hr&&c.hr[key];if(!H)return null;var o=[];for(var i=0;i<H.time.length;i++){if(H.time[i].slice(0,10)===iso)o.push({h:+H.time[i].slice(11,13),t:H.temperature_2m[i],p:H.precipitation_probability[i],w:H.weather_code[i],d:H.is_day[i]})}return o.length?o:null}
+  function rainWin(hr){var best=null,cur=null;hr.forEach(function(x){if(x.h<6)return;if(x.p!=null&&x.p>=40){if(!cur)cur={a:x.h,b:x.h,m:x.p};else{cur.b=x.h;cur.m=Math.max(cur.m,x.p)}}else if(cur){if(!best||cur.b-cur.a>best.b-best.a)best=cur;cur=null}});if(cur&&(!best||cur.b-cur.a>best.b-best.a))best=cur;return best}
   function wxLine(key,iso,c){var L=WXL[key],name=L[0],cl=L[3],dl=c&&c.loc&&c.loc[key],j=dl?dl.time.indexOf(iso):-1;
-    if(j<0){return '<div class="wxr clim"><span class="wi">🗓️</span><span><b>'+esc(name)+'</b> typisch Oktober ca. '+cl[0]+'° / '+cl[1]+'°</span></div>'}
+    if(j<0){var av=new Date(iso+"T12:00:00Z");av.setUTCDate(av.getUTCDate()-15);var avs=String(av.getUTCDate()).padStart(2,"0")+"."+String(av.getUTCMonth()+1).padStart(2,"0")+".";
+      return '<div class="wxc clim"><div class="wxt"><span class="wi">🗓️</span><span class="wn">'+esc(name)+'</span><span class="wtemp">ca. '+cl[0]+'° / '+cl[1]+'°</span></div><div class="wxd">typische Oktoberwerte · Vorhersage ab ca. '+avs+'</div></div>'}
     var w=WXC[dl.weather_code[j]]||["🌡️",""],mx=Math.round(dl.temperature_2m_max[j]),mn=Math.round(dl.temperature_2m_min[j]),pp=dl.precipitation_probability_max[j];
-    var hint=[];if(pp!=null&&pp>=50)hint.push("Schirm");if(mn<=10)hint.push("warme Schicht");if(mx>=30)hint.push("Wasser, Sonnenschutz");
-    return '<div class="wxr"><span class="wi">'+w[0]+'</span><span><b>'+esc(name)+'</b> '+mx+'° / '+mn+'° · '+esc(w[1])+(pp!=null?' · Regen '+pp+' %':'')+(hint.length?'<br><span class="wh">Heute: '+esc(hint.join(", "))+'</span>':'')+'</span></div>'}
+    var sr=dl.sunrise&&dl.sunrise[j]?dl.sunrise[j].slice(11,16):"",ss=dl.sunset&&dl.sunset[j]?dl.sunset[j].slice(11,16):"";
+    var hr=hrDay(c,key,iso),rw=hr?rainWin(hr):null;
+    var rain=pp==null?"":(rw?'🌧️ Regen wahrscheinlich '+rw.a+'–'+(rw.b+1)+' Uhr (bis '+rw.m+' %)':(pp>=20?'🌂 Regen möglich, max. '+pp+' %':'☀️ kaum Regen ('+pp+' %)'));
+    var hint=[];if(rw||(pp!=null&&pp>=50))hint.push("Schirm");if(mn<=10)hint.push("warme Schicht");if(mx>=30)hint.push("Wasser, Sonnenschutz");
+    var open=sget("wxopen")==="1";
+    return '<div class="wxc"><div class="wxt"><span class="wi">'+w[0]+'</span><span class="wn">'+esc(name)+'</span><span class="wtemp">'+mx+'° <span>/ '+mn+'°</span></span></div>'
+      +'<div class="wxd">'+esc(w[1])+(sr?' · 🌅 '+sr+' · 🌇 '+ss:'')+'</div>'
+      +(rain?'<div class="wxd">'+esc(rain)+'</div>':'')
+      +(hint.length?'<div class="wh">Heute: '+esc(hint.join(", "))+'</div>':'')
+      +(hr?'<details class="wxv"'+(open?' open':'')+'><summary>Verlauf über den Tag</summary>'+wxChart(hr,sr,ss)+'</details>':'')+'</div>'}
+  function wxChart(hr,sr,ss){
+    var H=hr.filter(function(x){return x.h>=5&&x.h<=23});if(H.length<3)return "";
+    var W=340,top=26,th=64,rb=top+th+14,rh=34,X0=22,X1=W-8,n=H.length,dx=(X1-X0)/(n-1);
+    var ts=H.map(function(x){return x.t}),tmax=Math.max.apply(null,ts),tmin=Math.min.apply(null,ts);if(tmax-tmin<4){var mid=(tmax+tmin)/2;tmax=mid+2;tmin=mid-2}
+    function x(i){return X0+i*dx}function y(t){return top+th-(t-tmin)/(tmax-tmin)*th}
+    var s='<svg class="wxs-svg" viewBox="0 0 '+W+' '+(rb+rh+18)+'" role="img" aria-label="Stundenverlauf Temperatur und Regenwahrscheinlichkeit">';
+    H.forEach(function(p,i){if(!p.d)s+='<rect x="'+(x(i)-dx/2).toFixed(1)+'" y="'+(top-4)+'" width="'+dx.toFixed(1)+'" height="'+(rb+rh-top+4)+'" class="nt"/>'});
+    s+='<line x1="'+X0+'" x2="'+X1+'" y1="'+(rb+rh)+'" y2="'+(rb+rh)+'" class="ax"/>';
+    H.forEach(function(p,i){var bh=(p.p||0)/100*rh;if(bh>0)s+='<rect x="'+(x(i)-dx*0.32).toFixed(1)+'" y="'+(rb+rh-bh).toFixed(1)+'" width="'+(dx*0.64).toFixed(1)+'" height="'+bh.toFixed(1)+'" rx="1.5" class="rb'+(p.p>=40?' hi':'')+'"/>'});
+    var d=H.map(function(p,i){return (i?"L":"M")+x(i).toFixed(1)+" "+y(p.t).toFixed(1)}).join(" ");
+    s+='<path d="'+d+' L'+x(n-1).toFixed(1)+' '+(top+th)+' L'+x(0).toFixed(1)+' '+(top+th)+' Z" class="ta"/><path d="'+d+'" class="tl2"/>';
+    var imx=ts.indexOf(Math.max.apply(null,ts)),imn=ts.indexOf(Math.min.apply(null,ts));
+    [imx,imn].forEach(function(i,k){s+='<circle cx="'+x(i).toFixed(1)+'" cy="'+y(H[i].t).toFixed(1)+'" r="3" class="tp"/><text x="'+x(i).toFixed(1)+'" y="'+(y(H[i].t)+(k?13:-6)).toFixed(1)+'" class="tv" text-anchor="middle">'+Math.round(H[i].t)+'°</text>'});
+    H.forEach(function(p,i){if(p.h%3===0){var ic=(WXC[p.w]||["·"])[0];if(!p.d&&(p.w===0||p.w===1))ic="🌙";else if(!p.d&&p.w===2)ic="☁️";s+='<text x="'+x(i).toFixed(1)+'" y="15" text-anchor="middle" class="ic">'+ic+'</text><text x="'+x(i).toFixed(1)+'" y="'+(rb+rh+13)+'" text-anchor="middle" class="hx">'+String(p.h).padStart(2,"0")+'</text>'}});
+    s+='<text x="'+X0+'" y="'+(rb+8)+'" class="lg">Regen %</text></svg>';
+    return s+'<div class="wxleg"><span><i class="k1"></i>Temperatur</span><span><i class="k2"></i>Regenwahrscheinlichkeit</span><span><i class="k3"></i>Nacht</span></div>'}
   function wxPaint(iso,keys,c){var el=document.getElementById("wx");if(!el||el.getAttribute("data-d")!==iso)return;var t=c&&c.ts?new Date(c.ts).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"";
     var sl=wxSlots(),stale=wxStale(c);
     el.innerHTML=keys.map(function(k){return wxLine(k,iso,c)}).join("")+(c&&c.ts?'<div class="wxs">Open-Meteo · Stand '+cnTime(c.ts,true)+' China-Zeit'+(stale?' · wird aktualisiert, sobald Netz da ist':' · nächste Aktualisierung '+cnTime(sl.next)+' Uhr')+'</div>':'<div class="wxs">Wetter wird geladen …</div>')}
@@ -1206,6 +1268,7 @@ nav.top{padding-top:0!important}
     if(t.hasAttribute("data-show")){e.preventDefault();try{openShow(JSON.parse(t.getAttribute("data-show")))}catch(x){}return}
     if(t.hasAttribute("data-v")){var v=t.getAttribute("data-v");if(v==="tag"){var cur=location.hash.indexOf("#tag/")===0?location.hash:"#tag/"+defaultDay();if(location.hash===cur)route();else location.hash=cur.slice(1)}else{if(location.hash==="#"+v)route();else location.hash=v}}
   });
+  document.addEventListener("toggle",function(e){if(e.target.classList&&e.target.classList.contains("wxv")){sset("wxopen",e.target.open?"1":null);document.querySelectorAll("details.wxv").forEach(function(x){if(x!==e.target)x.open=e.target.open})}},true);
   document.addEventListener("keydown",function(e){if(e.key==="Escape")closeShow();if((e.key==="Enter"||e.key===" ")&&e.target.hasAttribute&&e.target.hasAttribute("data-show")&&e.target.tagName!=="BUTTON"){e.preventDefault();openShow(JSON.parse(e.target.getAttribute("data-show")))}});
   document.addEventListener("change",function(e){var id=e.target.getAttribute&&e.target.getAttribute("data-todo");if(!id)return;setDone(id,e.target.checked);var li=e.target.closest("li");if(li){li.classList.toggle("done",e.target.checked);if(e.target.checked)li.classList.remove("late")}});
   // Wischen zwischen Tagen
