@@ -1050,7 +1050,7 @@ details.evo[open] summary::after{transform:rotate(180deg)}
         var a=e.target.closest&&e.target.closest("a[data-app]");
         if(!a) return;
         e.preventDefault();
-        window.location.href=a.getAttribute("data-app");
+        if(window.tgOpenApp){window.tgOpenApp(a);}else{window.location.href=a.getAttribute("data-app");}
       });
     }
   }catch(e){}
@@ -1275,6 +1275,22 @@ details.evo[open] summary::after{transform:rotate(180deg)}
   }
   function railCard(d){return '<section class="card"><h2>'+esc(d.railtitle||"Fahrplan Zug und Bus")+'</h2><ol class="rail">'+d.rail.map(function(r){return '<li class="'+esc(r.k||"")+'"><div class="rt"><b>'+esc(r.dep)+'</b>'+(r.arr?'<i>'+esc(r.arr)+'</i>':'')+'</div><div class="rb"><span class="chip">'+esc(r.chip)+'</span><div class="rn">'+esc(r.name)+'</div><div class="rs">'+esc(r.sub)+'</div>'+(r.note?'<div class="rm">'+esc(r.note)+'</div>':'')+'</div></li>'}).join("")+'</ol>'+(d.railnote?'<p class="small" style="margin:8px 0 0">'+esc(d.railnote)+'</p>':'')+'</section>'}
   function eveCard(d){return '<section class="card"><h2>'+esc(d.evetitle||"Abend: drei Optionen ab Ximen")+'</h2>'+d.evening.map(function(o){return '<details class="evo"><summary>'+esc(o.t)+'</summary><ol class="evs">'+o.s.map(function(x){return '<li>'+esc(x)+'</li>'}).join("")+'</ol><p class="small" style="margin:0 0 10px">'+esc(o.n)+'</p></details>'}).join("")+'</section>'}
+  // Karten-App öffnen: erst Schema, dann (falls die App nicht anspringt) Name kopieren und Web-Karte
+  window.tgOpenApp=function(a,test){
+    var app=a.getAttribute("data-app")||"",web=a.getAttribute("href")||"",name="",amap=app.indexOf("iosamap://")===0;
+    if(amap){try{var u=new URL(app.replace("iosamap://","http://x/"));name=u.searchParams.get("poiname")||""}catch(e){}}
+    var left=false;function mark(){left=true}
+    window.addEventListener("pagehide",mark,{once:true});window.addEventListener("blur",mark,{once:true});document.addEventListener("visibilitychange",mark,{once:true});
+    if(amap&&name&&!test)copyText(name);
+    if(!test)toast(amap?"Öffne Amap …":"Öffne die Karten-App …");
+    location.href=app;
+    if(amap)setTimeout(function(){
+      if(left||document.hidden){if(test){var r=document.getElementById("amapres");if(r)r.textContent="Amap hat sich geöffnet. Der Link funktioniert auf diesem Gerät."}return}
+      if(test){var r2=document.getElementById("amapres");if(r2)r2.textContent="Amap hat sich nicht geöffnet. Prüfen: Ist die App „高德地图“ installiert? Habt ihr die Seite in Safari oder auf dem Home-Bildschirm geöffnet? Bei Chrome die Rückfrage „Öffnen“ bestätigen.";return}
+      toast(name?("Amap hat sich nicht geöffnet. „"+name+"“ ist kopiert: in Amap oben in die Suche einfügen. Ich öffne die Web-Karte."):"Amap hat sich nicht geöffnet. Ich öffne die Web-Karte.");
+      if(web)setTimeout(function(){location.href=web},2200);
+    },1500);
+  };
   function wxSuggest(d){var c=wxCache(),k=(d.wx&&d.wx[0])||d.city,dl=c&&c.loc&&c.loc[k],j=dl?dl.time.indexOf(d.date):-1;
     if(j<0)return {k:"A",pp:null,known:false};var pp=dl.precipitation_probability_max[j],wc=dl.weather_code[j];
     return {k:((pp!=null&&pp>=60)||(wc>=61&&wc<=99))?"B":"A",pp:pp,known:true}}
@@ -1348,7 +1364,7 @@ details.evo[open] summary::after{transform:rotate(180deg)}
     $("#helptop").innerHTML=g;fxInit();renderMenu();
     var g2="";
     g2+='<section class="card" id="hilfe-sync"><h2>Häkchen zwischen euren Handys syncen</h2><p class="syncline"><span data-syncstate></span></p><p class="small">Einmal einrichten, dann gleichen beide Handys ihre Häkchen automatisch ab, auch nachträglich, wenn eines offline war.</p><label class="fl">Worker-Adresse<input id="sy-url" type="url" inputmode="url" autocomplete="off" placeholder="https://trip-sync.….workers.dev"></label><label class="fl">Sync-Code<input id="sy-key" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="geheimer Code"></label><div class="acts"><button type="button" class="btn pri" id="sy-save">Speichern und testen</button><button type="button" class="btn" id="sy-gen">Code erzeugen</button><button type="button" class="btn" id="sy-share">Link fürs zweite Handy</button><button type="button" class="btn" id="sy-off">Sync ausschalten</button></div><p class="small" id="sy-msg" role="status"></p></section>';
-    $("#helpsync").innerHTML=g2+'<section class="card"><h2>Diagnose</h2><p id="diag"></p></section>';fitApp();
+    $("#helpsync").innerHTML=g2+'<section class="card"><h2>Diagnose</h2><p id="diag"></p><h3 class="mh">Amap-Test</h3><div class="acts"><button type="button" class="btn" data-amaptest="open">Amap öffnen (Test)</button><button type="button" class="btn" data-amaptest="pin">Test-Pin: Yu Garden</button></div><p class="small" id="amapres" style="margin:8px 0 0"></p></section>';fitApp();
     $("#mq").addEventListener("input",function(){renderMenu()});
     $("#sy-url").value=SY.url||"";$("#sy-key").value=SY.key||"";syncStatus(SY.state);
     $("#sy-save").addEventListener("click",function(){syncSave($("#sy-url").value,$("#sy-key").value);$("#sy-msg").textContent="Gespeichert. Der Status oben zeigt, ob die Verbindung steht."});
@@ -1444,9 +1460,10 @@ details.evo[open] summary::after{transform:rotate(180deg)}
   }
   window.addEventListener("hashchange",function(){route();syncNow()});
   document.addEventListener("click",function(e){
-    var t=e.target.closest?e.target.closest("[data-wxopt],[data-fx],[data-day],[data-show],[data-v],[data-mf],[data-wc],[data-shareday],#show .close,#show .rot"):null;if(!t)return;
+    var t=e.target.closest?e.target.closest("[data-amaptest],[data-wxopt],[data-fx],[data-day],[data-show],[data-v],[data-mf],[data-wc],[data-shareday],#show .close,#show .rot"):null;if(!t)return;
     if(t.matches("#show .close")){closeShow();return}
     if(t.matches("#show .rot")){$("#show").classList.toggle("landscape");return}
+    if(t.hasAttribute("data-amaptest")){var tv=t.getAttribute("data-amaptest"),fa=document.createElement("a");fa.setAttribute("data-app",tv==="open"?"iosamap://":"iosamap://viewMap?sourceApplication=travelguide&poiname="+encodeURIComponent("豫园")+"&lat=31.22893&lon=121.48798&dev=1");fa.setAttribute("href","https://uri.amap.com/marker?position=121.48798,31.22893&name="+encodeURIComponent("豫园")+"&coordinate=wgs84&callnative=1");var rs=document.getElementById("amapres");if(rs)rs.textContent="Teste …";window.tgOpenApp(fa,true);return}
     if(t.hasAttribute("data-wxopt")){var wv=t.getAttribute("data-wxopt"),wd=t.getAttribute("data-date");sset("wxopt:"+wd,wv==="auto"?null:wv);var st=SCR.scrollTop;renderDay(wd);SCR.scrollTop=st;return}
     if(t.hasAttribute("data-fx")){sset("fxcur",t.getAttribute("data-fx"));fxRender();return}
     if(t.hasAttribute("data-wc")){e.preventDefault();openWeChat(t.getAttribute("data-wc"));return}
