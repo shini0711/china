@@ -440,6 +440,15 @@ details.evo[open] summary::after{transform:rotate(180deg)}
 
 .rail li.air .chip{background:#5B6772}
 
+/* Amap-Auswahl */
+#amapsheet{position:absolute;inset:0;z-index:90;display:none;background:rgba(10,20,30,.45)}
+#amapsheet.on{display:block}
+#amapsheet .sh{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 30px rgba(0,0,0,.25);max-height:88%;overflow:auto}
+#amapsheet h3{margin:0;font:800 24px/1.2 var(--cjk,var(--serif))}
+#amapsheet .sub{color:var(--ink2);font-size:14px;margin:4px 0 6px;line-height:1.35}
+#amapsheet a,#amapsheet button{display:flex;align-items:center;justify-content:center;text-align:center;min-height:52px;width:100%;margin:8px 0 0;padding:6px 14px;border-radius:12px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font:700 16px/1.2 var(--serif);text-decoration:none;cursor:pointer}
+#amapsheet a.pri{background:var(--jade);color:#fff;border-color:var(--jade)}
+
 </style>
 </head>
 <body>
@@ -1276,8 +1285,41 @@ details.evo[open] summary::after{transform:rotate(180deg)}
   function railCard(d){return '<section class="card"><h2>'+esc(d.railtitle||"Fahrplan Zug und Bus")+'</h2><ol class="rail">'+d.rail.map(function(r){return '<li class="'+esc(r.k||"")+'"><div class="rt"><b>'+esc(r.dep)+'</b>'+(r.arr?'<i>'+esc(r.arr)+'</i>':'')+'</div><div class="rb"><span class="chip">'+esc(r.chip)+'</span><div class="rn">'+esc(r.name)+'</div><div class="rs">'+esc(r.sub)+'</div>'+(r.note?'<div class="rm">'+esc(r.note)+'</div>':'')+'</div></li>'}).join("")+'</ol>'+(d.railnote?'<p class="small" style="margin:8px 0 0">'+esc(d.railnote)+'</p>':'')+'</section>'}
   function eveCard(d){return '<section class="card"><h2>'+esc(d.evetitle||"Abend: drei Optionen ab Ximen")+'</h2>'+d.evening.map(function(o){return '<details class="evo"><summary>'+esc(o.t)+'</summary><ol class="evs">'+o.s.map(function(x){return '<li>'+esc(x)+'</li>'}).join("")+'</ol><p class="small" style="margin:0 0 10px">'+esc(o.n)+'</p></details>'}).join("")+'</section>'}
   // Karten-App öffnen: erst Schema, dann (falls die App nicht anspringt) Name kopieren und Web-Karte
+  // ---------- Amap-Auswahl: echte, antippbare Links (kein Skript-Start) ----------
+  var IS_IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+  function amapInfo(a){
+    var app=a.getAttribute("data-app")||"",web=a.getAttribute("href")||"",o={web:web,name:"",lat:"",lon:"",gcj:false};
+    try{
+      if(app.indexOf("iosamap://viewMap")===0){var u=new URL(app.replace("iosamap://","http://x/"));o.name=u.searchParams.get("poiname")||"";o.lat=u.searchParams.get("lat")||"";o.lon=u.searchParams.get("lon")||"";o.gcj=u.searchParams.get("dev")==="0"}
+      else if(web.indexOf("uri.amap.com/search")>=0){var s=new URL(web);o.name=s.searchParams.get("keyword")||""}
+      else if(web.indexOf("uri.amap.com/marker")>=0){var m=new URL(web),pos=(m.searchParams.get("position")||"").split(",");o.name=m.searchParams.get("name")||"";o.lon=pos[0]||"";o.lat=pos[1]||"";o.gcj=m.searchParams.get("coordinate")==="gaode"}
+    }catch(e){}
+    return o}
+  function amapSheet(a){
+    var o=amapInfo(a),sh=document.getElementById("amapsheet");
+    if(!sh){sh=document.createElement("div");sh.id="amapsheet";document.getElementById("app").appendChild(sh);
+      sh.addEventListener("click",function(e){var t=e.target;if(t===sh||t.hasAttribute("data-shclose")){sh.classList.remove("on");return}
+        var c=t.closest&&t.closest("[data-copyname]");if(c){copyText(c.getAttribute("data-copyname")).then(function(ok){toast(ok?"Name kopiert: in Amap oben in die Suche einfügen":"Name: "+c.getAttribute("data-copyname"))});return}
+        if(t.closest&&t.closest("a"))setTimeout(function(){sh.classList.remove("on")},400)})}
+    var nm=encodeURIComponent(o.name||""),dev=o.gcj?0:1,has=!!(o.lat&&o.lon);
+    var rows="";
+    if(has){
+      rows+='<a class="pri" href="iosamap://path?sourceApplication=travelguide&dlat='+o.lat+'&dlon='+o.lon+'&dname='+nm+'&dev='+dev+'&t=1">Route in Amap (ab eurem Standort)</a>';
+      rows+='<a href="iosamap://viewMap?sourceApplication=travelguide&poiname='+nm+'&lat='+o.lat+'&lon='+o.lon+'&dev='+dev+'">Ort in Amap zeigen</a>';
+    }else{rows+='<a class="pri" href="iosamap://">Amap öffnen</a>'}
+    rows+='<button type="button" data-copyname="'+esc(o.name)+'">Chinesischen Namen kopieren (für die Amap-Suche)</button>';
+    rows+='<a href="'+esc(o.web)+'" target="_self">Web-Karte im Browser</a>';
+    if(has)rows+='<a href="maps://?ll='+o.lat+','+o.lon+'&q='+nm+'">Apple Karten</a>';
+    sh.innerHTML='<div class="sh" role="dialog" aria-label="Amap öffnen"><h3>'+esc(o.name||"Ziel")+'</h3><p class="sub">In Amap öffnen: eine Option antippen. Klappt die erste nicht, die nächste probieren.</p>'+rows+'<button type="button" data-shclose="1">Schließen</button></div>';
+    sh.classList.add("on");
+  }
+  if(IS_IOS)document.addEventListener("click",function(e){
+    var a=e.target.closest&&e.target.closest('a[href^="https://uri.amap.com/"]');
+    if(!a||a.hasAttribute("data-app")||a.closest("#amapsheet"))return;
+    e.preventDefault();amapSheet(a)},true);
   window.tgOpenApp=function(a,test){
     var app=a.getAttribute("data-app")||"",web=a.getAttribute("href")||"",name="",amap=app.indexOf("iosamap://")===0;
+    if(amap&&!test){amapSheet(a);return}
     if(amap){try{var u=new URL(app.replace("iosamap://","http://x/"));name=u.searchParams.get("poiname")||""}catch(e){}}
     var left=false;function mark(){left=true}
     window.addEventListener("pagehide",mark,{once:true});window.addEventListener("blur",mark,{once:true});document.addEventListener("visibilitychange",mark,{once:true});
